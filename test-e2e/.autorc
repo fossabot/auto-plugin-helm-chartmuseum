@@ -1,0 +1,21 @@
+{
+  "baseBranch": "main",
+  "prereleaseBranches": ["develop"],
+  "author": {
+    "name": "Eric Hayes",
+    "email": "eric@deployfx.com"
+  },
+  "plugins": [
+    ["../src/index.ts",{
+      "enableCanary": true,
+      "enablePrereleases": true,
+      "recursive": true,
+      "path": "charts",
+      "useHelmDocs": true,
+      "push": true,
+      "forcePush": true,
+      "repository": "@local",
+      "publishRepository": "local"
+    }]
+  ]
+}

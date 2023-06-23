@@ -1,0 +1,15 @@
+{{- if .Values.enabled -}}
+{{- $fullname := include "common.names.name" . -}}
+{{- range $secret := (include "vault-paths.secretPaths" . | fromJsonArray) -}}
+---
+apiVersion: koudingspawn.de/v1
+kind: Vault       
+metadata:
+  name: {{ $secret.name }}
+  labels:
+    {{- include "common.labels.standard" $ | nindent 4 }}
+spec:
+  path: {{ $secret.path }}
+  type: KEYVALUEV2
+{{- end -}}
+{{- end -}}

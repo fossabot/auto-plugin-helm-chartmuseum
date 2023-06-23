@@ -1,0 +1,9 @@
+apiVersion: v2
+description: |
+  This chart syncs values from vault paths
+name: vault-paths
+version: 0.0.0-local
+dependencies:
+  - name: common
+    version: 0.0.0-local
+    repository: file://../common

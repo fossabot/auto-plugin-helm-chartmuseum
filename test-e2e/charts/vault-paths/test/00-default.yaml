@@ -1,0 +1,4 @@
+enabled: true
+paths:
+  - 'prod/dummy-app-v1'
+  - 'prod/dummy-app-base'
