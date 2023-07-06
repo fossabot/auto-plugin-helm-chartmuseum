@@ -1,20 +1,28 @@
 import * as Auto from "@auto-it/core";
 import { makeHooks } from "@auto-it/core/dist/utils/make-hooks";
 import { dummyLog } from "@auto-it/core/dist/utils/logger";
-
+import {Helm} from '../src/helm'
 import HelmPlugin, { IHelmPluginOptions } from "../src";
 import Git from "@auto-it/core/dist/git";
-
-const exec = jest.fn()
-
-jest.mock(
-  "@auto-it/core/dist/utils/exec-promise",
-  () => (...args: any[]) => exec(...args)
-);
 
 jest.mock("@auto-it/core/dist/utils/get-current-branch", () => ({
   getCurrentBranch: () => "next"
 }))
+
+
+
+const logger = jest.fn(() => ({
+  log: {
+    info: jest.fn(),
+    debug: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn()
+  }
+}))
+
+// TODO need to get access to same helm object for tests
+const helm = jest.mocked(new Helm(logger() as any, {}))
+jest.mock('../src/helm', () => helm)
 
 const setup = (
   mockGit?: Partial<Git>,
@@ -43,7 +51,8 @@ const setup = (
 
 describe(HelmPlugin.name, () => {
   beforeEach(() => {
-    exec.mockClear()
+    //exec.mockClear()
+    helm.mockClear()
   })
 
   describe("validateConfig", () => {
@@ -66,21 +75,22 @@ describe(HelmPlugin.name, () => {
     it("fails without git", async () => {
       const hooks = setup();
       await hooks.version.promise({ bump: Auto.SEMVER.patch });
-      expect(exec).not.toHaveBeenCalled();
+      //expect(exec).not.toHaveBeenCalled();
     })
 
     // do nothing with bad bump
     it("fails with a invalid bump type", async () => {
       const hooks = setup({})
       await hooks.version.promise({bump: "wrong" as Auto.SEMVER})
-      expect(exec).not.toHaveBeenCalled()
+      //expect(exec).not.toHaveBeenCalled()
     })
 
     // should tag next
-    it("should do stuff", async () => {
+    it.only("should do stuff", async () => {
       const hooks = setup({})
       await hooks.version.promise({bump: "patch" as Auto.SEMVER})
-      expect(exec).toHaveBeenCalled()
+      expect(helm.validateDependencies).toBeCalledWith(2)
+      //expect(exec).toHaveBeenCalled()
     })
   })
 

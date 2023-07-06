@@ -1,4 +1,5 @@
 dist
+coverage
 publish
 charts/*/README.md
 charts/*/charts

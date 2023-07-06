@@ -20,7 +20,7 @@ interface PrepOptions {
 }
 
 export class Helm {
-  private readonly options: HelmOptions
+  options: HelmOptions
 
   constructor(
     private readonly logger: ILogger,
