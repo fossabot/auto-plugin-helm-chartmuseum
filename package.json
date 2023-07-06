@@ -8,9 +8,8 @@
     "services:start": "docker compose up -d chartmuseum",
     "services:stop": "docker compose stop",
     "services:remove": "docker compose rm --stop -f",
-    "test": "jest test",
-    "test:e2e": "cd test-e2e && dotenv -e environments/test.env auto shipit",
-    "test1:e2e": "dotenv -e environments/test.env jest test-e2e"
+    "test": "jest --testPathPattern=test/",
+    "test:e2e": "cd test-e2e && dotenv -e ../environments/test.env jest -- --testPathPattern=test-e2e/"
   },
   "author": "Eric Hayes <eric@deployfx.com>",
   "license": "ISC",

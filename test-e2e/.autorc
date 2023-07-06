@@ -15,6 +15,7 @@
       "push": true,
       "forcePush": true,
       "repository": "@local",
+      "replaceFileWithRepository": true,
       "publishRepository": "local"
     }]
   ]

@@ -1,7 +1,6 @@
 import {
   Auto,
   IPlugin,
-  execPromise,
   DEFAULT_PRERELEASE_BRANCHES,
   getCurrentBranch,
   determineNextVersion,
@@ -9,8 +8,6 @@ import {
 } from "@auto-it/core";
 import { inc, ReleaseType } from "semver";
 import * as t from "io-ts";
-import { readdir, readFile, cp, writeFile, rm, mkdir } from "fs/promises";
-import { join } from "path";
 import {Helm} from './helm'
 
 const pluginOptions = t.partial({
@@ -190,7 +187,7 @@ export default class HelmPlugin implements IPlugin {
 
         auto.logger.log.info(`Creating canary version: ${canaryVersion}`);
         await helm.prepCharts(canaryVersion, this.options.path, this.options.publishPath, {recursive: this.options.recursive, replaceFileWithRepository: this.options.replaceFileWithRepository, replaceVersionToken: this.options.replaceVersionString, repository: this.options.repository})
-        await helm.publishCharts(this.options.publishPath, this.options.repository, this.options.forcePush);
+        await helm.publishCharts(this.options.publishPath, this.options.publishRepository, this.options.forcePush);
       }
     );
 
@@ -208,7 +205,7 @@ export default class HelmPlugin implements IPlugin {
       const prefixedTag = auto.prefixRelease(newTag);
 
       await helm.prepCharts(prefixedTag, this.options.path, this.options.publishPath, {recursive: this.options.recursive, replaceFileWithRepository: this.options.replaceFileWithRepository, replaceVersionToken: this.options.replaceVersionString, repository: this.options.repository})
-      await helm.publishCharts(this.options.publishPath, this.options.repository, this.options.forcePush);
+      await helm.publishCharts(this.options.publishPath, this.options.publishRepository, this.options.forcePush);
     });
 
     auto.hooks.version.tapPromise(this.name, async (args) => {
@@ -247,7 +244,7 @@ export default class HelmPlugin implements IPlugin {
       prereleaseVersions.push(prerelease);
 
       await helm.prepCharts(prerelease, this.options.path, this.options.publishPath, {recursive: this.options.recursive, replaceFileWithRepository: this.options.replaceFileWithRepository, replaceVersionToken: this.options.replaceVersionString, repository: this.options.repository})
-      await helm.publishCharts(this.options.publishPath, this.options.repository, this.options.forcePush);
+      await helm.publishCharts(this.options.publishPath, this.options.publishRepository, this.options.forcePush);
       return prereleaseVersions;
     });
   }

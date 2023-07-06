@@ -73,8 +73,8 @@ export class Helm {
     }
     const chartDirs = await this.getChartDirs(srcPath, opts.recursive)
     
-    //await rm(destPath, { recursive: true, force: true });
-    //await mkdir(destPath, { recursive: true });
+    await rm(destPath, { recursive: true, force: true });
+    await mkdir(destPath, { recursive: true });
     await cp(srcPath, destPath, {
       recursive: true,
     });
@@ -103,8 +103,8 @@ export class Helm {
 
     for (const chartDir of chartDirs) {
       await this.prepChart(
-        join(srcPath, chartDir),
         join(destPath, chartDir),
+        destPath,
         version,
         opts
       );
