@@ -1,3 +1,4 @@
+import { execPromise } from '@auto-it/core'
 import {RestClient} from 'typed-rest-client'
 
 interface IChartVersion {
@@ -28,7 +29,7 @@ describe('e2e tests', () => {
   })
   
   afterAll(async () => {
-    await clearChartmuseum()
+    //await clearChartmuseum()
   })
   
 
@@ -40,6 +41,12 @@ describe('e2e tests', () => {
   })
 
   // before shipit
+
+  // TODO: get e2e tests to run shipit and check outputs...
+  it.only('works', async () => {
+    const res = await execPromise('auto', ['shipit', '-d'])
+    expect(res).toBe('fail')
+  })
 
   // after shipit (with certain versions set)
 })
