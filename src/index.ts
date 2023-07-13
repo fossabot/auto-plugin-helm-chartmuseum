@@ -8,7 +8,7 @@ import {
 } from "@auto-it/core";
 import { inc, ReleaseType } from "semver";
 import * as t from "io-ts";
-import {Helm} from './helm'
+import { Helm } from "./helm";
 
 const pluginOptions = t.partial({
   /** Path to use for charts */
@@ -130,12 +130,12 @@ export default class HelmPlugin implements IPlugin {
   apply(auto: Auto) {
     const helm = new Helm(auto.logger, {
       useHelmDocs: this.options.useHelmDocs,
-      versionToken: this.options.versionString
-    })
+      versionToken: this.options.versionString,
+    });
 
     async function getTag() {
-      if (!auto.git) return auto.prefixRelease("0.0.0")
-      
+      if (!auto.git) return auto.prefixRelease("0.0.0");
+
       try {
         return await auto.git.getLatestTagInBranch();
       } catch (error) {
@@ -144,7 +144,7 @@ export default class HelmPlugin implements IPlugin {
     }
 
     auto.hooks.beforeRun.tapPromise(this.name, async () => {
-      await helm.validateDependencies()
+      await helm.validateDependencies();
     });
 
     auto.hooks.getPreviousVersion.tapPromise(this.name, async () => {
@@ -176,10 +176,10 @@ export default class HelmPlugin implements IPlugin {
         const lastRelease = await auto.git.getLatestRelease();
         const current = await auto.getCurrentVersion(lastRelease);
         const nextVersion = inc(current, bump as ReleaseType);
-        
+
         if (!nextVersion) {
-          auto.logger.log.info('Cannot determine version')
-          return
+          auto.logger.log.info("Cannot determine version");
+          return;
         }
 
         const canaryVersion = `${nextVersion}-${canaryIdentifier}`;
@@ -188,14 +188,28 @@ export default class HelmPlugin implements IPlugin {
           auto.logger.log.info(
             `[DRY RUN] Would have created canary version: ${canaryVersion}`
           );
-          return
+          return;
         }
 
         auto.logger.log.info(`Creating canary version: ${canaryVersion}`);
-        await helm.prepCharts(canaryVersion, this.options.path, this.options.publishPath, {recursive: this.options.recursive, replaceFileWithRepository: this.options.replaceFileWithRepository, replaceVersionToken: this.options.replaceVersionString, repository: this.options.repository})
-        
+        await helm.prepCharts(
+          canaryVersion,
+          this.options.path,
+          this.options.publishPath,
+          {
+            recursive: this.options.recursive,
+            replaceFileWithRepository: this.options.replaceFileWithRepository,
+            replaceVersionToken: this.options.replaceVersionString,
+            repository: this.options.repository,
+          }
+        );
+
         if (this.options.push) {
-          await helm.publishCharts(this.options.publishPath, this.options.publishRepository, this.options.forcePush);
+          await helm.publishCharts(
+            this.options.publishPath,
+            this.options.publishRepository,
+            this.options.forcePush
+          );
         }
       }
     );
@@ -213,9 +227,23 @@ export default class HelmPlugin implements IPlugin {
 
       const prefixedTag = auto.prefixRelease(newTag);
 
-      await helm.prepCharts(prefixedTag, this.options.path, this.options.publishPath, {recursive: this.options.recursive, replaceFileWithRepository: this.options.replaceFileWithRepository, replaceVersionToken: this.options.replaceVersionString, repository: this.options.repository})
+      await helm.prepCharts(
+        prefixedTag,
+        this.options.path,
+        this.options.publishPath,
+        {
+          recursive: this.options.recursive,
+          replaceFileWithRepository: this.options.replaceFileWithRepository,
+          replaceVersionToken: this.options.replaceVersionString,
+          repository: this.options.repository,
+        }
+      );
       if (this.options.push) {
-        await helm.publishCharts(this.options.publishPath, this.options.publishRepository, this.options.forcePush);
+        await helm.publishCharts(
+          this.options.publishPath,
+          this.options.publishRepository,
+          this.options.forcePush
+        );
       }
     });
 
@@ -256,10 +284,24 @@ export default class HelmPlugin implements IPlugin {
 
       prereleaseVersions.push(prerelease);
 
-      await helm.prepCharts(prerelease, this.options.path, this.options.publishPath, {recursive: this.options.recursive, replaceFileWithRepository: this.options.replaceFileWithRepository, replaceVersionToken: this.options.replaceVersionString, repository: this.options.repository})
-      
+      await helm.prepCharts(
+        prerelease,
+        this.options.path,
+        this.options.publishPath,
+        {
+          recursive: this.options.recursive,
+          replaceFileWithRepository: this.options.replaceFileWithRepository,
+          replaceVersionToken: this.options.replaceVersionString,
+          repository: this.options.repository,
+        }
+      );
+
       if (this.options.push) {
-        await helm.publishCharts(this.options.publishPath, this.options.publishRepository, this.options.forcePush);
+        await helm.publishCharts(
+          this.options.publishPath,
+          this.options.publishRepository,
+          this.options.forcePush
+        );
       }
       return prereleaseVersions;
     });

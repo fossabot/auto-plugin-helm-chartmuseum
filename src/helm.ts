@@ -1,6 +1,6 @@
-import {readdir, rm, mkdir, cp, readFile, writeFile} from 'fs/promises'
-import {execPromise, ILogger} from '@auto-it/core'
-import {join} from 'path'
+import { readdir, rm, mkdir, cp, readFile, writeFile } from "fs/promises";
+import { execPromise, ILogger } from "@auto-it/core";
+import { join } from "path";
 
 enum TOOLS {
   HELM = "helm",
@@ -8,28 +8,29 @@ enum TOOLS {
 }
 
 interface HelmOptions {
-  versionToken: string,
-  useHelmDocs: boolean
+  versionToken: string;
+  useHelmDocs: boolean;
 }
 
 interface PrepOptions {
-  repository?: string
-  recursive: boolean
-  replaceVersionToken: boolean
-  replaceFileWithRepository: boolean
+  repository?: string;
+  recursive: boolean;
+  replaceVersionToken: boolean;
+  replaceFileWithRepository: boolean;
 }
 
 export class Helm {
-  options: HelmOptions
+  options: HelmOptions;
 
-  constructor(
-    private readonly logger: ILogger,
-    options: Partial<HelmOptions>
-  ) {
+  constructor(private readonly logger: ILogger, options: Partial<HelmOptions>) {
     this.options = {
-      useHelmDocs: options.useHelmDocs !== undefined ? options.useHelmDocs : true,
-      versionToken: options.versionToken !== undefined ? options.versionToken : '0.0.0-local'
-    }
+      useHelmDocs:
+        options.useHelmDocs !== undefined ? options.useHelmDocs : true,
+      versionToken:
+        options.versionToken !== undefined
+          ? options.versionToken
+          : "0.0.0-local",
+    };
   }
 
   async validateDependencies() {
@@ -64,15 +65,20 @@ export class Helm {
     }
   }
 
-  async prepCharts(version: string, srcPath: string, destPath: string, _opts: Partial<PrepOptions> = {}) {
+  async prepCharts(
+    version: string,
+    srcPath: string,
+    destPath: string,
+    _opts: Partial<PrepOptions> = {}
+  ) {
     const opts: PrepOptions = {
       recursive: true,
       replaceFileWithRepository: true,
       replaceVersionToken: true,
-      ..._opts
-    }
-    const chartDirs = await this.getChartDirs(srcPath, opts.recursive)
-    
+      ..._opts,
+    };
+    const chartDirs = await this.getChartDirs(srcPath, opts.recursive);
+
     await rm(destPath, { recursive: true, force: true });
     await mkdir(destPath, { recursive: true });
     await cp(srcPath, destPath, {
@@ -102,12 +108,7 @@ export class Helm {
     }
 
     for (const chartDir of chartDirs) {
-      await this.prepChart(
-        join(destPath, chartDir),
-        destPath,
-        version,
-        opts
-      );
+      await this.prepChart(join(destPath, chartDir), destPath, version, opts);
     }
 
     for (const chartDir of chartDirs) {
@@ -118,10 +119,7 @@ export class Helm {
     }
   }
 
-  async inlineReplace(
-    path: string,
-    replacers: (contents: string) => string
-  ) {
+  async inlineReplace(path: string, replacers: (contents: string) => string) {
     this.logger.log.debug(`Inline replacement for ${path}`);
 
     const contents = replacers((await readFile(path)).toString());
@@ -164,12 +162,7 @@ export class Helm {
     }
 
     // package the chart
-    await execPromise(TOOLS.HELM, [
-      "package",
-      srcPath,
-      "-d",
-      destPath,
-    ]);
+    await execPromise(TOOLS.HELM, ["package", srcPath, "-d", destPath]);
   }
 
   async getChartDirs(path: string, recursive = false) {
@@ -180,8 +173,8 @@ export class Helm {
           withFileTypes: true,
         })
       )
-      .filter((i) => i.isDirectory())
-      .map((i) => i.name);
+        .filter((i) => i.isDirectory())
+        .map((i) => i.name);
     }
 
     return path;

@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "lint": "eslint .",
+    "format": "",
     "build": "rimraf dist && tsc",
     "services:start": "docker compose up -d chartmuseum",
     "services:stop": "docker compose stop",
