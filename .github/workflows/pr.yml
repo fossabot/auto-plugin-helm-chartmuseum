@@ -75,6 +75,8 @@ jobs:
     needs: [init]
     timeout-minutes: 3
     permissions: write-all
+    env:
+      CHARTMUSEUM_BASE_URL: http://localhost:8080
     services:
       # Label used to access the service container
       chartmuseum:
@@ -116,10 +118,8 @@ jobs:
         run: helm plugin install https://github.com/chartmuseum/helm-push
       - name: Add Chartmuseum repo
         env:
-          CHART_URL: http://localhost:8080
-        run: helm repo add $HELM_REPO_ALIAS $CHART_URL
+        run: helm repo add local $CHARTMUSEUM_BASE_URL
       - env:
-          CHARTMUSEUM_BASE_URL: http://localhost:8080
           HELM_PLUGIN_ENABLE_CANARY: true
           HELM_PLUGIN_PUSH: true
           HELM_PLUGIN_REPOSITORY: "@local"
