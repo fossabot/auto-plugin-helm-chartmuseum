@@ -20,7 +20,7 @@ jobs:
           key: modules-${{ hashFiles('package-lock.json') }}
       - uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: "18"
       - if: steps.cache.outputs.cache-hit != 'true'
         run: npm ci
 
@@ -37,7 +37,7 @@ jobs:
           key: modules-${{ hashFiles('package-lock.json') }}
       - uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: "18"
       - uses: wearerequired/lint-action@v2
         with:
           eslint: true
@@ -45,9 +45,9 @@ jobs:
           prettier: true
           prettier_extensions: ts,json,js,yml
           auto_fix: true
-          commit_message: 'chore(lint): Fix code style issues with ${linter}'
+          commit_message: "chore(lint): Fix code style issues with ${linter}"
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          git_email: 'lint-action@github.com'
+          git_email: "lint-action@github.com"
 
   build:
     runs-on: ubuntu-latest
@@ -62,7 +62,7 @@ jobs:
           key: modules-${{ hashFiles('package-lock.json') }}
       - uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: "18"
       - run: npm run ci:build
       - env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -82,8 +82,8 @@ jobs:
           - 8080:8080
         env:
           DEBUG: 1
-          STORAGE: 'local'
-          STORAGE_LOCAL_ROOTDIR: '/tmp/charts'
+          STORAGE: "local"
+          STORAGE_LOCAL_ROOTDIR: "/tmp/charts"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/cache@v3
@@ -92,7 +92,7 @@ jobs:
           key: modules-${{ hashFiles('package-lock.json') }}
       - uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: "18"
       - if: ${{ github.actor != 'dependabot[bot]' }}
         uses: mattallty/jest-github-action@v1
         with:
