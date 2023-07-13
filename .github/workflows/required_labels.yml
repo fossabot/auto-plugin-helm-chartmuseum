@@ -23,4 +23,4 @@ jobs:
         with:
           mode: minimum
           count: 1
-          labels: "major,minor,patch,skip-release,internal,documentation,performance,bug"
+          labels: "major,minor,patch,skip-release,internal"
