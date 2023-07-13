@@ -3,6 +3,14 @@ on:
   pull_request:
     types: [opened, synchronize]
 
+permissions:
+  actions: write
+  checks: write
+  contents: read
+  issues: write
+  pull-requests: write
+  statuses: write
+
 concurrency:
   group: ${{ github.head_ref }}-label
   cancel-in-progress: true

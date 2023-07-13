@@ -4,6 +4,13 @@ on:
   pull_request:
     types: [opened, labeled, unlabeled]
 
+permissions:
+  actions: write
+  checks: write
+  issues: write
+  pull-requests: write
+  statuses: write
+
 jobs:
   label:
     # do not run for prerelease branches
