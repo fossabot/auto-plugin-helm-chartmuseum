@@ -1,7 +1,8 @@
 import { RestClient } from "typed-rest-client";
 import { spawn } from "child_process";
 
-const CHARTMUSEUM_BASE_URL = process.env.CHARTMUSEUM_BASE_URL || 'http://localhost:8080'
+const CHARTMUSEUM_BASE_URL =
+  process.env.CHARTMUSEUM_BASE_URL || "http://localhost:8080";
 
 interface IChartVersion {
   name: string;

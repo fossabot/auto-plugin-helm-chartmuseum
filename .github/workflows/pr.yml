@@ -122,7 +122,7 @@ jobs:
           CHARTMUSEUM_BASE_URL: http://localhost:8080
           HELM_PLUGIN_ENABLE_CANARY: true
           HELM_PLUGIN_PUSH: true
-          HELM_PLUGIN_REPOSITORY: '@local'
+          HELM_PLUGIN_REPOSITORY: "@local"
           HELM_PLUGIN_PUBLISH_REPOSITORY: local
         run: npm run ci:test:e2e
       #- name: unit tests
