@@ -1,0 +1,108 @@
+name: Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+concurrency:
+  group: ${{ github.head_ref }}-pr
+  cancel-in-progress: true
+
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - id: cache
+        uses: actions/cache@v3
+        with:
+          path: ./node_modules
+          key: modules-${{ hashFiles('package-lock.json') }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+  lint:
+    runs-on: ubuntu-latest
+    needs: [init]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+      - uses: actions/cache@v3
+        with:
+          path: ./node_modules
+          key: modules-${{ hashFiles('package-lock.json') }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - uses: wearerequired/lint-action@v2
+        with:
+          eslint: true
+          eslint_extensions: ts
+          prettier: true
+          prettier_extensions: ts,json,js,yml
+          auto_fix: true
+          commit_message: 'chore(lint): Fix code style issues with ${linter}'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          git_email: 'lint-action@github.com'
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [init]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Prepare repository
+        run: git fetch --unshallow --tags
+      - uses: actions/cache@v3
+        with:
+          path: ./node_modules
+          key: modules-${{ hashFiles('package-lock.json') }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm run ci:build
+      - env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx auto shipit -d
+
+  test:
+    runs-on: ubuntu-latest
+    needs: [init]
+    timeout-minutes: 3
+    services:
+      # Label used to access the service container
+      chartmuseum:
+        # Docker Hub image
+        image: ghcr.io/helm/chartmuseum:v0.16.0
+        # Set health checks to wait until redis has started
+        ports:
+          - 8080:8080
+        env:
+          DEBUG: 1
+          STORAGE: 'local'
+          STORAGE_LOCAL_ROOTDIR: '/tmp/charts'
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        with:
+          path: ./node_modules
+          key: modules-${{ hashFiles('package-lock.json') }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - if: ${{ github.actor != 'dependabot[bot]' }}
+        uses: mattallty/jest-github-action@v1
+        with:
+          test-command: npm run test:ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - if: ${{ github.actor == 'dependabot[bot]' }}
+        run: npm run test
+      - run: npm run test:e2e
+      - name: unit tests
+        uses: paambaati/codeclimate-action@v3.0.0
+        env:
+          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
