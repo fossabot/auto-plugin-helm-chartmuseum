@@ -176,18 +176,27 @@ export default class HelmPlugin implements IPlugin {
         const lastRelease = await auto.git.getLatestRelease();
         const current = await auto.getCurrentVersion(lastRelease);
         const nextVersion = inc(current, bump as ReleaseType);
+        
+        if (!nextVersion) {
+          auto.logger.log.info('Cannot determine version')
+          return
+        }
+
         const canaryVersion = `${nextVersion}-${canaryIdentifier}`;
 
         if (dryRun) {
           auto.logger.log.info(
             `[DRY RUN] Would have created canary version: ${canaryVersion}`
           );
-          //return
+          return
         }
 
         auto.logger.log.info(`Creating canary version: ${canaryVersion}`);
         await helm.prepCharts(canaryVersion, this.options.path, this.options.publishPath, {recursive: this.options.recursive, replaceFileWithRepository: this.options.replaceFileWithRepository, replaceVersionToken: this.options.replaceVersionString, repository: this.options.repository})
-        await helm.publishCharts(this.options.publishPath, this.options.publishRepository, this.options.forcePush);
+        
+        if (this.options.push) {
+          await helm.publishCharts(this.options.publishPath, this.options.publishRepository, this.options.forcePush);
+        }
       }
     );
 
@@ -205,7 +214,9 @@ export default class HelmPlugin implements IPlugin {
       const prefixedTag = auto.prefixRelease(newTag);
 
       await helm.prepCharts(prefixedTag, this.options.path, this.options.publishPath, {recursive: this.options.recursive, replaceFileWithRepository: this.options.replaceFileWithRepository, replaceVersionToken: this.options.replaceVersionString, repository: this.options.repository})
-      await helm.publishCharts(this.options.publishPath, this.options.publishRepository, this.options.forcePush);
+      if (this.options.push) {
+        await helm.publishCharts(this.options.publishPath, this.options.publishRepository, this.options.forcePush);
+      }
     });
 
     auto.hooks.version.tapPromise(this.name, async (args) => {
@@ -227,6 +238,8 @@ export default class HelmPlugin implements IPlugin {
     auto.hooks.next.tapPromise(this.name, async (prereleaseVersions, args) => {
       if (!auto.git) return prereleaseVersions;
 
+      if (!this.options.enablePreleases) return prereleaseVersions;
+
       const prereleaseBranches =
         auto.config?.prereleaseBranches ?? DEFAULT_PRERELEASE_BRANCHES;
       const branch = getCurrentBranch() || "";
@@ -244,7 +257,10 @@ export default class HelmPlugin implements IPlugin {
       prereleaseVersions.push(prerelease);
 
       await helm.prepCharts(prerelease, this.options.path, this.options.publishPath, {recursive: this.options.recursive, replaceFileWithRepository: this.options.replaceFileWithRepository, replaceVersionToken: this.options.replaceVersionString, repository: this.options.repository})
-      await helm.publishCharts(this.options.publishPath, this.options.publishRepository, this.options.forcePush);
+      
+      if (this.options.push) {
+        await helm.publishCharts(this.options.publishPath, this.options.publishRepository, this.options.forcePush);
+      }
       return prereleaseVersions;
     });
   }

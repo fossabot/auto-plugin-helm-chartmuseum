@@ -1,6 +1,5 @@
-import {ILogger} from '@auto-it/core'
 import { Helm } from "../src/helm";
-import {rm, mkdir, cp} from 'fs/promises'
+import {rm, mkdir, cp, readdir} from 'fs/promises'
 
 const exec = jest.fn()
 const logger = jest.fn(() => ({
@@ -64,6 +63,37 @@ describe(Helm.name, () => {
       expect(helm.inlineReplace).not.toBeCalled()
     })
   })
+
+  describe('publishCharts', () => {
+    it('works', async () => {
+      jest.mocked(readdir).mockResolvedValueOnce([{name: 'someChart.tgz', isFile: () => true} as any])
+
+      await helm.publishCharts('path','repo', true)
+
+      expect(exec).toBeCalledWith("helm",["cm-push","-f","path/someChart.tgz", "repo"])
+    })
+
+    it('skips non tgz files and directories', async () => {
+      jest.mocked(readdir).mockResolvedValueOnce([
+        {name: 'someFile', isFile: () => true} as any,
+        {name: 'someDir', isFile: () => false} as any,
+        {name: 'someChart.tgz', isFile: () => true} as any
+      ])
+
+      await helm.publishCharts('path','repo', true)
+
+      expect(exec).toBeCalledWith("helm",["cm-push","-f","path/someChart.tgz", "repo"])
+    })
+
+    it('does not publish anything if no charts found', async () => {
+      jest.mocked(readdir).mockResolvedValueOnce([])
+
+      await helm.publishCharts('path','repo', true)
+
+      expect(exec).not.toBeCalled()
+    })
+  })
+
 
   describe('prepCharts', () => {
     beforeEach(() => {

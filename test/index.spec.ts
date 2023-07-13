@@ -9,7 +9,8 @@ jest.mock("@auto-it/core/dist/utils/get-current-branch", () => ({
   getCurrentBranch: () => "next"
 }))
 
-
+jest.mock('../src/helm')
+const helmMocked = jest.mocked(Helm)
 
 const logger = jest.fn(() => ({
   log: {
@@ -20,10 +21,6 @@ const logger = jest.fn(() => ({
   }
 }))
 
-// TODO need to get access to same helm object for tests
-const helm = jest.mocked(new Helm(logger() as any, {}))
-jest.mock('../src/helm', () => helm)
-
 const setup = (
   mockGit?: Partial<Git>,
   options?: IHelmPluginOptions,
@@ -32,8 +29,6 @@ const setup = (
 ) => {
   const plugin = new HelmPlugin(options || {});
   const hooks = makeHooks();
-
-  // TODO: mock getCurrentBranch, execPromise
 
   plugin.apply(({
     checkEnv,
@@ -51,8 +46,7 @@ const setup = (
 
 describe(HelmPlugin.name, () => {
   beforeEach(() => {
-    //exec.mockClear()
-    helm.mockClear()
+    helmMocked.mockClear()
   })
 
   describe("validateConfig", () => {
@@ -64,61 +58,178 @@ describe(HelmPlugin.name, () => {
     });
   })
 
-  /**
-   * TODO: need these tests
-   * - fails without git
-   * - fails with bad bump
-   * - correctly bumps version
-   */
+  
   describe("version", () => {
     // do nothing without git
     it("fails without git", async () => {
       const hooks = setup();
       await hooks.version.promise({ bump: Auto.SEMVER.patch });
-      //expect(exec).not.toHaveBeenCalled();
     })
 
     // do nothing with bad bump
     it("fails with a invalid bump type", async () => {
       const hooks = setup({})
       await hooks.version.promise({bump: "wrong" as Auto.SEMVER})
-      //expect(exec).not.toHaveBeenCalled()
     })
 
-    // should tag next
-    it.only("should do stuff", async () => {
+    it("correctly labels valid bump", async () => {
       const hooks = setup({})
-      await hooks.version.promise({bump: "patch" as Auto.SEMVER})
-      expect(helm.validateDependencies).toBeCalledWith(2)
-      //expect(exec).toHaveBeenCalled()
+      await hooks.version.promise({bump: Auto.SEMVER.patch})
     })
   })
 
-  /**
-   * TODO: next tests
-   * - fails without git
-   * - fails with bad version
-   * - skips if prereleases disabled
-   * - preps charts with correct version and repository
-   */
+  describe("next", () => {
+    it("preps charts with correct version and repository", async () => {
+      const hooks = setup({getLastTagNotInBaseBranch: async() => "0.0.1",getLatestRelease: async () => "0.0.1"}, {enablePreleases: true, repository: "dummy", push: true})
+      const res = await hooks.next.promise(['0.0.1'],{bump: Auto.SEMVER.patch} as any)
+      const helm = helmMocked.mock.instances[0]
 
-  /**
-   * TODO: publish tests
-   * - fails without git
-   * - fails with invalid version
-   * - skip if publihsing not enabled
-   * - prep chart with correct version and repository
-   */
+      expect(helm.prepCharts).toBeCalledWith("0.0.2-next.0",".","publish",expect.objectContaining({recursive: false, replaceFileWithRepository: false, replaceVersionToken: true, repository: "dummy"}))
+      expect(helm.publishCharts).toBeCalledWith("publish","",false)
+      expect(res).toMatchObject(expect.arrayContaining(['0.0.1','0.0.2-next.0']))
+    })
 
-  /** TODO: canary tests
-   * - fails without git
-   * - fails with invalid version bump
-   * - skip if canary disabled
-   * - prep chart with correct version and repository
-   */
+    it("does not publish if push disabled", async () => {
+      const hooks = setup({getLastTagNotInBaseBranch: async() => "0.0.1",getLatestRelease: async () => "0.0.1"}, {enablePreleases: true, push: false})
+      const res = await hooks.next.promise(['0.0.1'],{bump: Auto.SEMVER.patch} as any)
+      const helm = helmMocked.mock.instances[0]
 
-  /**
-   * TODO: helm helper class
-   * 
-   */
+      expect(helm.publishCharts).not.toBeCalled()
+    })
+
+    it("returns default version if git not found", async () => {
+      const hooks = setup()
+      const res = await hooks.next.promise(['1234'],{} as any)
+      expect(res).toMatchObject(expect.arrayContaining(['1234']))
+    })
+
+    it("fails with bad version", async () => {
+      const hooks = setup({getLastTagNotInBaseBranch: async() => "invalid",getLatestRelease: async () => "invalid"},{enablePreleases: true})
+      const res = await hooks.next.promise(['invalid'],{bump: "wrong"} as any)
+      expect(res).toMatchObject(expect.arrayContaining(['invalid','prerelease']))
+    })
+
+    it("skips if prereleases disabled", async () => {
+      const hooks = setup({},{enablePreleases: false})
+      await hooks.next.promise(['1234'],{bump: Auto.SEMVER.patch} as any)
+      const helm = helmMocked.mock.instances[0]
+      expect(helm.prepCharts).not.toBeCalled()
+      expect(helm.publishCharts).not.toBeCalled()
+    })
+  })
+
+  describe('publish',() => {
+    it('fails without git', async () => {
+      const hooks = setup()
+      await hooks.publish.promise({} as any)
+    })
+
+    it('fails with invalid version', async () => {
+      const hooks = setup({getLatestTagInBranch: async () => "wrong"})
+      await hooks.publish.promise({bump: Auto.SEMVER.patch})
+      const helm = helmMocked.mock.instances[0]
+
+      expect(helm.prepCharts).not.toBeCalled()
+      expect(helm.publishCharts).not.toBeCalled()
+    })
+
+    it('fails with invalid bump', async () => {
+      const hooks = setup({getLatestTagInBranch: async () => '0.0.1'})
+      await hooks.publish.promise({bump: "wrong"} as any)
+      const helm = helmMocked.mock.instances[0]
+
+      expect(helm.prepCharts).not.toBeCalled()
+      expect(helm.publishCharts).not.toBeCalled()
+    })
+
+    it('skips if publishing not enabled', async () => {
+      const hooks = setup({getLatestTagInBranch: async () => "0.0.1"},{repository: "dummy", push: false})
+      await hooks.publish.promise({bump: Auto.SEMVER.patch})
+
+      const helm = helmMocked.mock.instances[0]
+
+      expect(helm.prepCharts).toBeCalledWith("0.0.2",".","publish", expect.objectContaining({recursive: false, replaceFileWithRepository: false, replaceVersionToken: true, repository: "dummy"}))
+      expect(helm.publishCharts).not.toBeCalled()
+    })
+
+    it('preps chart with correct version and repository', async () => {
+      const hooks = setup({getLatestTagInBranch: async () => "0.0.1"},{repository: "dummy", push: true})
+      await hooks.publish.promise({bump: Auto.SEMVER.patch})
+
+      const helm = helmMocked.mock.instances[0]
+
+      expect(helm.prepCharts).toBeCalledWith("0.0.2",".","publish", expect.objectContaining({recursive: false, replaceFileWithRepository: false, replaceVersionToken: true, repository: "dummy"}))
+      expect(helm.publishCharts).toBeCalledWith("publish","",false)
+    })
+  })
+
+  describe('beforeRun', () => {
+    it('validates dependencies', async () => {
+      const hooks = setup({})
+      await hooks.beforeRun.promise({} as any)
+
+      const helm = helmMocked.mock.instances[0]
+
+      expect(helm.validateDependencies).toBeCalledTimes(1)
+    })
+  })
+
+  describe('getPreviousVersion', () => {
+    it('returns previous version', async () => {
+      const hooks = setup({getLatestTagInBranch: async () => "1.2.3"})
+      const res = await hooks.getPreviousVersion.promise()
+      expect(res).toBe("1.2.3")
+    })
+
+    it('fails without git', async () => {
+      const hooks = setup()
+      await expect(hooks.getPreviousVersion.promise()).rejects.toThrow()
+    })
+  })
+
+  describe('canary', () => {
+    it('fails without git', async () => {
+      const hooks = setup()
+      await hooks.canary.promise({} as any)
+    })
+
+    it('fails with invalid version bump', async () => {
+      const hooks = setup({getLatestRelease: async () => "0.0.1"}, {enableCanary: true})
+      await hooks.canary.promise({bump: "wrong", canaryIdentifier: "canary"} as any)
+      const helm = helmMocked.mock.instances[0]
+      expect(helm.prepCharts).not.toBeCalled()
+      expect(helm.publishCharts).not.toBeCalled()
+    })
+
+    it('skips is canary disabled', async() => {
+      const hooks = setup({getLatestRelease: async () => "0.0.1"}, {enableCanary: false})
+      await hooks.canary.promise({bump: "wrong", canaryIdentifier: "canary"} as any)
+      const helm = helmMocked.mock.instances[0]
+      expect(helm.prepCharts).not.toBeCalled()
+      expect(helm.publishCharts).not.toBeCalled()
+    })
+
+    it('skips is dryrun mode', async() => {
+      const hooks = setup({getLatestRelease: async () => "0.0.1"}, {enableCanary: true})
+      await hooks.canary.promise({bump: Auto.SEMVER.patch as any, canaryIdentifier: "canary", dryRun: true})
+      const helm = helmMocked.mock.instances[0]
+      expect(helm.prepCharts).not.toBeCalled()
+      expect(helm.publishCharts).not.toBeCalled()
+    })
+
+    it('skips publishing if push not enabled', async () => {
+      const hooks = setup({getLatestRelease: async () => "0.0.1"}, {enableCanary: true, push: false})
+      await hooks.canary.promise({bump: Auto.SEMVER.patch, canaryIdentifier: "canary"} as any)
+      const helm = helmMocked.mock.instances[0]
+      expect(helm.publishCharts).not.toBeCalled()
+    })
+
+    it('preps chart with correct version and repository', async () => {
+      const hooks = setup({getLatestRelease: async () => "0.0.1"}, {enableCanary: true, repository: "dummy", push: true})
+      await hooks.canary.promise({bump: Auto.SEMVER.patch, canaryIdentifier: "canary"} as any)
+      const helm = helmMocked.mock.instances[0]
+      expect(helm.prepCharts).toBeCalledWith("1.0.1-canary",".","publish",expect.objectContaining({recursive: false, replaceFileWithRepository: false, replaceVersionToken: true, repository: "dummy"}))
+      expect(helm.publishCharts).toBeCalledWith("publish","",false)
+    })
+  })
 })
