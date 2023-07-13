@@ -123,6 +123,7 @@ jobs:
           HELM_PLUGIN_PUSH: true
           HELM_PLUGIN_REPOSITORY: "@local"
           HELM_PLUGIN_PUBLISH_REPOSITORY: local
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run ci:test:e2e
       #- name: unit tests
       #  uses: paambaati/codeclimate-action@v3.0.0
