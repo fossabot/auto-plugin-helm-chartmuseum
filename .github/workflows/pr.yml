@@ -75,9 +75,6 @@ jobs:
     needs: [init]
     timeout-minutes: 3
     permissions: write-all
-    env:
-      CHARTMUSEUM_PORT: '8080'
-      HELM_REPO_ALIAS: 'local'
     services:
       # Label used to access the service container
       chartmuseum:
@@ -85,12 +82,12 @@ jobs:
         image: ghcr.io/helm/chartmuseum:v0.16.0
         # Set health checks to wait until redis has started
         ports:
-          - ${{ env.CHARTMUSEUM_PORT }}:${{ env.CHARTMUSEUM_PORT}}
+          - 8080:8080
         env:
           DEBUG: 1
           STORAGE: "local"
           STORAGE_LOCAL_ROOTDIR: "/tmp/charts"
-          PORT: ${{ env.CHARTMUSEUM_PORT }}
+          PORT: 8080
     steps:
       - uses: actions/checkout@v3
       - uses: actions/cache@v3
@@ -119,14 +116,14 @@ jobs:
         run: helm plugin install https://github.com/chartmuseum/helm-push
       - name: Add Chartmuseum repo
         env:
-          CHART_URL: http://localhost:${{ env.CHARTMUSEUM_PORT }}
+          CHART_URL: http://localhost:8080
         run: helm repo add $HELM_REPO_ALIAS $CHART_URL
       - env:
-          CHARTMUSEUM_BASE_URL: http://localhost:${{ env.CHARTMUSEUM_PORT }}
+          CHARTMUSEUM_BASE_URL: http://localhost:8080
           HELM_PLUGIN_ENABLE_CANARY: true
           HELM_PLUGIN_PUSH: true
-          HELM_PLUGIN_REPOSITORY: '@${{ env.HELM_REPO_ALIAS }}'
-          HELM_PLUGIN_PUBLISH_REPOSITORY: ${{ env.HELM_REPO_ALIAS }}
+          HELM_PLUGIN_REPOSITORY: '@local'
+          HELM_PLUGIN_PUBLISH_REPOSITORY: local
         run: npm run ci:test:e2e
       #- name: unit tests
       #  uses: paambaati/codeclimate-action@v3.0.0
