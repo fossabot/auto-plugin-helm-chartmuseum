@@ -5,7 +5,6 @@
     "name": "Eric Hayes",
     "email": "eric@deployfx.com"
   },
-  "onlyPublishWithReleaseLabel": false,
   "plugins": [
     ["../src/index.ts",{
       "enableCanary": true,
