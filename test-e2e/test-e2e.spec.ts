@@ -1,6 +1,7 @@
-import { execPromise } from "@auto-it/core";
 import { RestClient } from "typed-rest-client";
 import { spawn } from "child_process";
+
+const CHARTMUSEUM_BASE_URL = process.env.CHARTMUSEUM_BASE_URL || 'http://localhost:8080'
 
 interface IChartVersion {
   name: string;
@@ -39,7 +40,7 @@ async function runCommand(command: string, args: string[]) {
 describe("e2e tests", () => {
   const client: RestClient = new RestClient(
     "jest",
-    "http://localhost:8080/api"
+    `${CHARTMUSEUM_BASE_URL}/api`
   );
 
   async function clearChartmuseum() {

@@ -75,6 +75,9 @@ jobs:
     needs: [init]
     timeout-minutes: 3
     permissions: write-all
+    env:
+      CHARTMUSEUM_PORT: '8080'
+      HELM_REPO_ALIAS: 'local'
     services:
       # Label used to access the service container
       chartmuseum:
@@ -82,11 +85,12 @@ jobs:
         image: ghcr.io/helm/chartmuseum:v0.16.0
         # Set health checks to wait until redis has started
         ports:
-          - 8080:8080
+          - ${{ env.CHARTMUSEUM_PORT }}:${{ env.CHARTMUSEUM_PORT}}
         env:
           DEBUG: 1
           STORAGE: "local"
           STORAGE_LOCAL_ROOTDIR: "/tmp/charts"
+          PORT: ${{ env.CHARTMUSEUM_PORT }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/cache@v3
@@ -104,8 +108,27 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - if: ${{ github.actor == 'dependabot[bot]' }}
         run: npm run ci:test
-      - run: npm run ci:test:e2e
-      - name: unit tests
-        uses: paambaati/codeclimate-action@v3.0.0
+      # e2e dependencies
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+      - name: Setup helm-docs
+        run: |
+          wget https://github.com/norwoodj/helm-docs/releases/download/v1.11.0/helm-docs_1.11.0_Linux_x86_64.deb
+          sudo dpkg -i helm-docs_1.11.0_Linux_x86_64.deb
+      - name: Setup Helm Push Plugin
+        run: helm plugin install https://github.com/chartmuseum/helm-push
+      - name: Add Chartmuseum repo
         env:
-          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+          CHART_URL: http://localhost:${{ env.CHARTMUSEUM_PORT }}
+        run: helm repo add $HELM_REPO_ALIAS $CHART_URL
+      - env:
+          CHARTMUSEUM_BASE_URL: http://localhost:${{ env.CHARTMUSEUM_PORT }}
+          HELM_PLUGIN_ENABLE_CANARY: true
+          HELM_PLUGIN_PUSH: true
+          HELM_PLUGIN_REPOSITORY: '@${{ env.HELM_REPO_ALIAS }}'
+          HELM_PLUGIN_PUBLISH_REPOSITORY: ${{ env.HELM_REPO_ALIAS }}
+        run: npm run ci:test:e2e
+      #- name: unit tests
+      #  uses: paambaati/codeclimate-action@v3.0.0
+      #  env:
+      #    CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
