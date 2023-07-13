@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "ci:build": "npm run build",
+    "ci:test": "npm run build",
+    "ci:test:e2e": "npm run test:e2e",
     "lint": "eslint .",
     "format": "",
     "build": "rimraf dist && tsc",
