@@ -27,8 +27,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     needs: [init]
-    permissions:
-      checks: write
+    permissions: write-all
     steps:
       - uses: actions/checkout@v3
         with:
@@ -75,8 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [init]
     timeout-minutes: 3
-    permissions:
-      checks: write
+    permissions: write-all
     services:
       # Label used to access the service container
       chartmuseum:
