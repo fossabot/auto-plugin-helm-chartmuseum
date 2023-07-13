@@ -66,7 +66,11 @@ describe("e2e tests", () => {
     expect(charts.statusCode).toBe(200);
     expect(JSON.stringify(charts.result)).toBe("{}");
 
-    const autoReturnCode = await runCommand("npx", ["auto", "canary", "--force"]);
+    const autoReturnCode = await runCommand("npx", [
+      "auto",
+      "canary",
+      "--force",
+    ]);
     expect(autoReturnCode).toBe(0);
   }, 40000);
 
