@@ -3,6 +3,5 @@
 module.exports = {
   collectCoverage: true,
   preset: "ts-jest",
-  testEnvironment: "node",
-  coverageReporters: ["text", "lcov"],
+  testEnvironment: "node"
 };

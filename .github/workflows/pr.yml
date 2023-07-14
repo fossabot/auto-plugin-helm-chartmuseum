@@ -128,9 +128,8 @@ jobs:
           HELM_PLUGIN_PUBLISH_REPOSITORY: local
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run ci:test:e2e
-      - name: unit tests
-        uses: paambaati/codeclimate-action@v5.0.0
+      - uses: paambaati/codeclimate-action@v5.0.0
         env:
           CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
         with:
-          coverageLocations: coverage:lcov
+          coverageLocations: coverage/clover.xml:clover
