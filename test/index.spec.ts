@@ -5,9 +5,18 @@ import { Helm } from "../src/helm";
 import HelmPlugin, { IHelmPluginOptions } from "../src";
 import Git from "@auto-it/core/dist/git";
 
+const exec = jest.fn();
+
 jest.mock("@auto-it/core/dist/utils/get-current-branch", () => ({
   getCurrentBranch: () => "next",
 }));
+
+jest.mock(
+  "@auto-it/core/dist/utils/exec-promise",
+  () =>
+    (...args: any[]) =>
+      exec(...args)
+);
 
 jest.mock("../src/helm");
 const helmMocked = jest.mocked(Helm);
@@ -47,6 +56,7 @@ const setup = (
 describe(HelmPlugin.name, () => {
   beforeEach(() => {
     helmMocked.mockClear();
+    exec.mockClear()
   });
 
   describe("validateConfig", () => {
@@ -103,6 +113,11 @@ describe(HelmPlugin.name, () => {
         })
       );
       expect(helm.publishCharts).toBeCalledWith("publish", "", false);
+
+      expect(exec).toBeCalledTimes(2)
+      expect(exec).toBeCalledWith("git",["tag","0.0.2-next.0","-m", "\"Tag pre-release: 0.0.2-next.0\""])
+      expect(exec).toBeCalledWith("git", ["push", "origin", "next","--tags"])
+
       expect(res).toMatchObject(
         expect.arrayContaining(["0.0.1", "0.0.2-next.0"])
       );
@@ -152,6 +167,7 @@ describe(HelmPlugin.name, () => {
       const helm = helmMocked.mock.instances[0];
       expect(helm.prepCharts).not.toBeCalled();
       expect(helm.publishCharts).not.toBeCalled();
+      expect(exec).not.toBeCalled()
     });
   });
 
@@ -200,6 +216,7 @@ describe(HelmPlugin.name, () => {
         })
       );
       expect(helm.publishCharts).not.toBeCalled();
+      expect(exec).not.toBeCalled()
     });
 
     it("preps chart with correct version and repository", async () => {
@@ -223,6 +240,10 @@ describe(HelmPlugin.name, () => {
         })
       );
       expect(helm.publishCharts).toBeCalledWith("publish", "", false);
+
+      expect(exec).toBeCalledTimes(2)
+      expect(exec).toBeCalledWith("git",["tag","0.0.2","-m", "\"Update version to 0.0.2\""])
+      expect(exec).toBeCalledWith("git", ["push", "--follow-tags", "--set-upstream", "origin", "next"])
     });
   });
 

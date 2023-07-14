@@ -2,6 +2,7 @@ import {
   Auto,
   IPlugin,
   DEFAULT_PRERELEASE_BRANCHES,
+  execPromise,
   getCurrentBranch,
   determineNextVersion,
   validatePluginConfiguration,
@@ -210,6 +211,9 @@ export default class HelmPlugin implements IPlugin {
             this.options.publishRepository,
             this.options.forcePush
           );
+
+          //await execPromise("git", ["tag", "-f", `${canaryAliasVersion}`, "-m", `Tag pull request canary: ${canaryAliasVersion} (${canaryVersion})`]);
+          //await execPromise("git", ["push", auto.remote, `refs/tags/${canaryAliasVersion}`, "-f"]);
         }
       }
     );
@@ -244,6 +248,20 @@ export default class HelmPlugin implements IPlugin {
           this.options.publishRepository,
           this.options.forcePush
         );
+
+        await execPromise("git", [
+          "tag",
+          prefixedTag,
+          "-m",
+          `"Update version to ${prefixedTag}"`,
+        ]);
+        await execPromise("git", [
+          "push",
+          "--follow-tags",
+          "--set-upstream",
+          auto.remote,
+          getCurrentBranch() || auto.baseBranch,
+        ]);
       }
     });
 
@@ -302,6 +320,14 @@ export default class HelmPlugin implements IPlugin {
           this.options.publishRepository,
           this.options.forcePush
         );
+
+        await execPromise("git", [
+          "tag",
+          prerelease,
+          "-m",
+          `"Tag pre-release: ${prerelease}"`,
+        ]);
+        await execPromise("git", ["push", auto.remote, branch, "--tags"]);
       }
       return prereleaseVersions;
     });
