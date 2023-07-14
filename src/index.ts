@@ -1,16 +1,15 @@
 import {
   Auto,
   IPlugin,
-  execPromise,
   DEFAULT_PRERELEASE_BRANCHES,
+  execPromise,
   getCurrentBranch,
   determineNextVersion,
   validatePluginConfiguration,
 } from "@auto-it/core";
 import { inc, ReleaseType } from "semver";
 import * as t from "io-ts";
-import { readdir, readFile, cp, writeFile, rm, mkdir } from "fs/promises";
-import { join } from "path";
+import { Helm } from "./helm";
 
 const pluginOptions = t.partial({
   /** Path to use for charts */
@@ -40,11 +39,6 @@ const pluginOptions = t.partial({
   /** Repository to publish to */
   publishRepository: t.string,
 });
-
-enum TOOLS {
-  HELM = "helm",
-  HELM_DOCS = "helm-docs",
-}
 
 enum HELM_PLUGIN_ENV_VARS {
   PATH = "HELM_PLUGIN_PATH",
@@ -135,138 +129,14 @@ export default class HelmPlugin implements IPlugin {
   }
 
   apply(auto: Auto) {
-    const options = this.options;
-
-    async function publishCharts() {
-      if (!options.push) {
-        auto.logger.log.info("Skipping publish");
-        return;
-      }
-
-      if (!options.publishRepository) {
-        throw new Error("publish repository must be set");
-      }
-
-      const chartsToPublish = (
-        await readdir(options.publishPath, {
-          withFileTypes: true,
-        })
-      )
-        .filter((i) => i.isFile() && i.name.search(/\.tgz$/) >= 0)
-        .map((i) => join(options.publishPath, i.name));
-
-      for (const chart of chartsToPublish) {
-        auto.logger.log.info(`Publishing ${chart}`);
-        await execPromise(TOOLS.HELM, [
-          "cm-push",
-          ...(options.forcePush ? ["-f"] : []),
-          chart,
-          options.publishRepository,
-        ]);
-      }
-    }
-
-    async function prepCharts(version: string, repository?: string) {
-      await rm(options.publishPath, { recursive: true, force: true });
-      await mkdir(options.publishPath, { recursive: true });
-      await cp(options.path, options.publishPath, {
-        recursive: true,
-      });
-
-      // replace all versions with the current version
-      for (const chart of await getChartDirs()) {
-        const chartPath = join(options.publishPath, chart);
-        if (options.replaceVersionString) {
-          for (const file of await findMatchingChartFiles(chartPath)) {
-            await inlineReplace(join(chartPath, file), (content) => {
-              return content.replace(
-                new RegExp(options.versionString, "ig"),
-                version
-              );
-            });
-          }
-        }
-      }
-
-      if (options.useHelmDocs) {
-        auto.logger.log.info("Updating documentation");
-        await execPromise(TOOLS.HELM_DOCS, ["-u", "publish", "-s", "alphanum"]);
-      } else {
-        auto.logger.log.info("Skipping documentation generation");
-      }
-
-      for (const chartDir of await getChartDirs()) {
-        await prepChart(
-          join(options.publishPath, chartDir),
-          version,
-          repository
-        );
-      }
-
-      for (const chartDir of await getChartDirs()) {
-        await rm(join(options.publishPath, chartDir), {
-          recursive: true,
-          force: true,
-        });
-      }
-    }
-
-    async function inlineReplace(
-      path: string,
-      replacers: (contents: string) => string
-    ) {
-      auto.logger.log.debug(`Inline replacement for ${path}`);
-
-      const contents = replacers((await readFile(path)).toString());
-
-      return await writeFile(path, contents);
-    }
-
-    async function findMatchingChartFiles(chartPath: string) {
-      const MATCHER = /(readme\.md)|(chart\.ya?ml)|(chart\.lock)/i;
-      return (await readdir(chartPath, { withFileTypes: true }))
-        .filter((i) => i.isFile())
-        .map((i) => i.name)
-        .filter((i) => i.search(MATCHER) >= 0);
-    }
-
-    async function prepChart(
-      chartPath: string,
-      version: string,
-      repository?: string
-    ) {
-      auto.logger.log.info(`Creating chart: ${chartPath} vedrsion ${version}`);
-
-      // remove charts dir external dependencies
-      await rm(join(chartPath, "charts", "*.tgz"), {
-        recursive: true,
-        force: true,
-      });
-
-      // update dependencies
-      await execPromise(TOOLS.HELM, ["dep", "up", chartPath]);
-
-      // update file references with repo aliases
-      if (repository) {
-        for (const file of await findMatchingChartFiles(chartPath)) {
-          await inlineReplace(join(chartPath, file), (contents) => {
-            return contents.replace(/file:\/\/[^\s]+/g, `'${repository}'`);
-          });
-        }
-      }
-
-      // package the chart
-      await execPromise(TOOLS.HELM, [
-        "package",
-        chartPath,
-        "-d",
-        options.publishPath,
-      ]);
-    }
+    const helm = new Helm(auto.logger, {
+      useHelmDocs: this.options.useHelmDocs,
+      versionToken: this.options.versionString,
+    });
 
     async function getTag() {
-      if (!auto.git) return auto.prefixRelease("0.0.0")
-      
+      if (!auto.git) return auto.prefixRelease("0.0.0");
+
       try {
         return await auto.git.getLatestTagInBranch();
       } catch (error) {
@@ -274,30 +144,8 @@ export default class HelmPlugin implements IPlugin {
       }
     }
 
-    async function getChartDirs() {
-      if (options.recursive)
-        return (
-          await readdir(options.path, {
-            recursive: options.recursive,
-            withFileTypes: true,
-          })
-        )
-          .filter((i) => i.isDirectory())
-          .map((i) => i.name);
-
-      return options.path;
-    }
-
     auto.hooks.beforeRun.tapPromise(this.name, async () => {
-      auto.logger.log.info("Checking for helm...");
-      await execPromise(TOOLS.HELM, ["version"]);
-
-      if (this.options.useHelmDocs) {
-        auto.logger.log.info("Checking for helm-docs...");
-        await execPromise(TOOLS.HELM_DOCS, ["--version"]);
-      } else {
-        auto.logger.log.info("Skipping check for helm-docs");
-      }
+      await helm.validateDependencies();
     });
 
     auto.hooks.getPreviousVersion.tapPromise(this.name, async () => {
@@ -329,18 +177,44 @@ export default class HelmPlugin implements IPlugin {
         const lastRelease = await auto.git.getLatestRelease();
         const current = await auto.getCurrentVersion(lastRelease);
         const nextVersion = inc(current, bump as ReleaseType);
+
+        if (!nextVersion) {
+          auto.logger.log.info("Cannot determine version");
+          return;
+        }
+
         const canaryVersion = `${nextVersion}-${canaryIdentifier}`;
 
         if (dryRun) {
           auto.logger.log.info(
             `[DRY RUN] Would have created canary version: ${canaryVersion}`
           );
-          //return
+          return;
         }
 
         auto.logger.log.info(`Creating canary version: ${canaryVersion}`);
-        await prepCharts(canaryVersion, this.options.repository);
-        await publishCharts();
+        await helm.prepCharts(
+          canaryVersion,
+          this.options.path,
+          this.options.publishPath,
+          {
+            recursive: this.options.recursive,
+            replaceFileWithRepository: this.options.replaceFileWithRepository,
+            replaceVersionToken: this.options.replaceVersionString,
+            repository: this.options.repository,
+          }
+        );
+
+        if (this.options.push) {
+          await helm.publishCharts(
+            this.options.publishPath,
+            this.options.publishRepository,
+            this.options.forcePush
+          );
+
+          //await execPromise("git", ["tag", "-f", `${canaryAliasVersion}`, "-m", `Tag pull request canary: ${canaryAliasVersion} (${canaryVersion})`]);
+          //await execPromise("git", ["push", auto.remote, `refs/tags/${canaryAliasVersion}`, "-f"]);
+        }
       }
     );
 
@@ -357,7 +231,38 @@ export default class HelmPlugin implements IPlugin {
 
       const prefixedTag = auto.prefixRelease(newTag);
 
-      await prepCharts(prefixedTag, this.options.repository);
+      await helm.prepCharts(
+        prefixedTag,
+        this.options.path,
+        this.options.publishPath,
+        {
+          recursive: this.options.recursive,
+          replaceFileWithRepository: this.options.replaceFileWithRepository,
+          replaceVersionToken: this.options.replaceVersionString,
+          repository: this.options.repository,
+        }
+      );
+      if (this.options.push) {
+        await helm.publishCharts(
+          this.options.publishPath,
+          this.options.publishRepository,
+          this.options.forcePush
+        );
+
+        await execPromise("git", [
+          "tag",
+          prefixedTag,
+          "-m",
+          `"Update version to ${prefixedTag}"`,
+        ]);
+        await execPromise("git", [
+          "push",
+          "--follow-tags",
+          "--set-upstream",
+          auto.remote,
+          getCurrentBranch() || auto.baseBranch,
+        ]);
+      }
     });
 
     auto.hooks.version.tapPromise(this.name, async (args) => {
@@ -379,6 +284,8 @@ export default class HelmPlugin implements IPlugin {
     auto.hooks.next.tapPromise(this.name, async (prereleaseVersions, args) => {
       if (!auto.git) return prereleaseVersions;
 
+      if (!this.options.enablePreleases) return prereleaseVersions;
+
       const prereleaseBranches =
         auto.config?.prereleaseBranches ?? DEFAULT_PRERELEASE_BRANCHES;
       const branch = getCurrentBranch() || "";
@@ -395,7 +302,33 @@ export default class HelmPlugin implements IPlugin {
 
       prereleaseVersions.push(prerelease);
 
-      await prepCharts(prerelease, this.options.repository);
+      await helm.prepCharts(
+        prerelease,
+        this.options.path,
+        this.options.publishPath,
+        {
+          recursive: this.options.recursive,
+          replaceFileWithRepository: this.options.replaceFileWithRepository,
+          replaceVersionToken: this.options.replaceVersionString,
+          repository: this.options.repository,
+        }
+      );
+
+      if (this.options.push) {
+        await helm.publishCharts(
+          this.options.publishPath,
+          this.options.publishRepository,
+          this.options.forcePush
+        );
+
+        await execPromise("git", [
+          "tag",
+          prerelease,
+          "-m",
+          `"Tag pre-release: ${prerelease}"`,
+        ]);
+        await execPromise("git", ["push", auto.remote, branch, "--tags"]);
+      }
       return prereleaseVersions;
     });
   }

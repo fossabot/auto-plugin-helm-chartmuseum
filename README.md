@@ -1,4 +1,7 @@
 # auto-plugin-helm-chartmuseum
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-0-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 Auto plugin for helm charts! This plugin can do the following:
 
@@ -35,6 +38,30 @@ To use in your projects, add this to you `.autorc` file under `plugins` section:
 }
 ```
 
+### github actions
+You can use this with GitHub actions as follows:
+
+```yaml
+- name: Setup Helm
+  uses: azure/setup-helm@v3
+- name: Setup helm-docs
+  run: |
+    wget https://github.com/norwoodj/helm-docs/releases/download/v1.11.0/helm-docs_1.11.0_Linux_x86_64.deb
+    sudo dpkg -i helm-docs_1.11.0_Linux_x86_64.deb
+    rm helm-docs_1.11.0_Linux_x86_64.deb
+- name: Setup Helm Push Plugin
+  run: helm plugin install https://github.com/chartmuseum/helm-push
+- name: Add Chartmuseum repo
+  run: helm repo add local $CHARTMUSEUM_BASE_URL
+- env:
+    HELM_PLUGIN_ENABLE_CANARY: true
+    HELM_PLUGIN_PUSH: true
+    HELM_PLUGIN_REPOSITORY: "@local"
+    HELM_PLUGIN_PUBLISH_REPOSITORY: local
+    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  run: npx auto shipit
+```
+
 ## configuration
 
 | setting                     | description                                                    | environment variable                       | default       |
@@ -57,3 +84,16 @@ If you are pushing to chart museum (set `push` or `HELM_PLUGIN_PUSH` to `true`) 
 
 - `HELM_REPO_USERNAME`
 - `HELM_REPO_PASSWORD`
+
+## Contributors ✨
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!

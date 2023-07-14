@@ -1,0 +1,26 @@
+name: Autolabel Pull Request
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  actions: write
+  checks: write
+  contents: read
+  issues: write
+  pull-requests: write
+  statuses: write
+
+concurrency:
+  group: ${{ github.head_ref }}-label
+  cancel-in-progress: true
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ejhayes/labeler@master
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          action_asset_url: "https://github.com/ejhayes/labeler/releases/latest/download/action.tar.gz"
