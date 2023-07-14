@@ -42,7 +42,7 @@
     "io-ts": "^2.2.20",
     "semver": "^7.5.2"
   },
-  "repository": "ejhayes/action-plugin-helm-chartmuseum",
+  "repository": "ejhayes/auto-plugin-helm-chartmuseum",
   "auto": {
     "plugins": [
       "npm",
