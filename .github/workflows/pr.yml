@@ -74,6 +74,32 @@ jobs:
     runs-on: ubuntu-latest
     needs: [init]
     timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v3
+      - name: Prepare repository
+        run: git fetch --unshallow --tags
+      - uses: actions/cache@v3
+        with:
+          path: ./node_modules
+          key: modules-${{ hashFiles('package-lock.json') }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - if: ${{ github.actor != 'dependabot[bot]' }}
+        uses: paambaati/codeclimate-action@v5.0.0
+        env:
+          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          coverageLocations: coverage/lcov.info:lcov
+          coverageCommand: npm run ci:test
+      - if: ${{ github.actor == 'dependabot[bot]' }}
+        run: npm run ci:test
+
+  test-e2e:
+    runs-on: ubuntu-latest
+    needs: [test]
+    timeout-minutes: 3
     permissions: write-all
     env:
       CHARTMUSEUM_BASE_URL: http://localhost:8080
@@ -101,14 +127,6 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: "18"
-      - if: ${{ github.actor != 'dependabot[bot]' }}
-        uses: mattallty/jest-github-action@v1
-        with:
-          test-command: npm run ci:test
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - if: ${{ github.actor == 'dependabot[bot]' }}
-        run: npm run ci:test
       # e2e dependencies
       - name: Setup Helm
         uses: azure/setup-helm@v3
@@ -128,7 +146,3 @@ jobs:
           HELM_PLUGIN_PUBLISH_REPOSITORY: local
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run ci:test:e2e
-      #- name: unit tests
-      #  uses: paambaati/codeclimate-action@v3.0.0
-      #  env:
-      #    CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
