@@ -146,5 +146,3 @@ jobs:
           HELM_PLUGIN_PUBLISH_REPOSITORY: local
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run ci:test:e2e
-      
-
