@@ -45,7 +45,7 @@
     "@auto-it/core": "^10.46.0",
     "fp-ts": "^2.16.0",
     "io-ts": "^2.2.20",
-    "semver": "^7.5.2"
+    "semver": "^7.5.4"
   },
   "repository": "ejhayes/auto-plugin-helm-chartmuseum",
   "auto": {
