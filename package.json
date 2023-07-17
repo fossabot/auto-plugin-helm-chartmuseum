@@ -1,8 +1,13 @@
 {
   "name": "auto-plugin-helm-chartmuseum",
   "version": "0.1.0",
-  "description": "",
-  "main": "index.js",
+  "description": "auto plugin for helm chart publishing",
+  "files": [
+    "README.md",
+    "LICENSE",
+    "dist"
+  ],
+  "main": "dist/index.js",
   "scripts": {
     "ci:build": "npm run build",
     "ci:test": "npm run test -- --coverage",
@@ -17,7 +22,7 @@
     "test:e2e": "cd test-e2e && dotenv -e ../environments/test.env jest -- --testPathPattern=test-e2e/"
   },
   "author": "Eric Hayes <eric@deployfx.com>",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@auto-it/all-contributors": "^10.46.0",
     "@auto-it/first-time-contributor": "^10.46.0",
