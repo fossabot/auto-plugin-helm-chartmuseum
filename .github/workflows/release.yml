@@ -40,6 +40,16 @@ jobs:
 
       - run: npm run ci:build
 
+      # upload coverage info
+      - if: ${{ github.actor != 'dependabot[bot]' }}
+        uses: paambaati/codeclimate-action@v5.0.0
+        env:
+          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          coverageLocations: coverage/lcov.info:lcov
+          coverageCommand: npm run ci:test
+
       - name: Create Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,3 +1,5 @@
+test-e2e/charts/*/README.md
+test/e2e/*/charts
 dist
 coverage
 publish
